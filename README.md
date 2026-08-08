@@ -4,8 +4,6 @@
 
 **Permissioned AI-agent execution layer for on-chain finance.**
 
-Built for Hacker House Goa 2026 — AI × Crypto × Multichain.
-
 </div>
 
 <br/>
@@ -168,7 +166,7 @@ Mock mode requires zero setup and is what runs out of the box — useful for ite
 | DeFi protocols supported | Aave V3 only | Additional allowlisted protocols behind the same Risk Engine gate |
 | Simulation depth | Single `eth_call` revert check | Full Tenderly simulation (state diffs, gas profiling) |
 
-This is a deliberate hackathon scope decision, not a shortcut around the "did a real transaction happen" question — one protocol, fully real end to end, beats fifteen protocols that are all mocked.
+This is a deliberate scope decision, not a shortcut around the "did a real transaction happen" question — one protocol, fully real end to end, beats fifteen protocols that are all mocked.
 
 ---
 
@@ -188,4 +186,4 @@ Ethereum, Base, and Arbitrum balances are readable; the live opportunity-discove
 
 ## What NOT to build (scope guardrails)
 
-Not a chatbot, not a trading bot, not an NFT marketplace, not a 20-chain wallet, not an unrestricted autonomous agent. Every addition should be checked against: *does this materially improve the core AgentVault experience or Hacker House Goa selection potential?* If not, cut it.
+Not a chatbot, not a trading bot, not an NFT marketplace, not a 20-chain wallet, not an unrestricted autonomous agent. Every addition should be checked against: *does this materially improve the core AgentVault experience?* If not, cut it.

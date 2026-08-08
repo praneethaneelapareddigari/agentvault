@@ -4,7 +4,7 @@ Protocol Data Service
 Hardcoded, vetted allowlist of protocols for the MVP demo. Deliberately NOT
 a general "any protocol" integration — see Risk Engine notes for why.
 
-Live version (post-hackathon): pull from protocol APIs / subgraphs / DefiLlama
+Live version (future extension): pull from protocol APIs / subgraphs / DefiLlama
 per chain, still filtered through the same allowlist + risk model.
 """
 

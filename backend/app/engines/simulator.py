@@ -9,9 +9,8 @@ Two modes, selected by EXECUTION_MODE:
     "would this Aave supply() call revert?" without spending any gas or
     changing any state. This is the same technique Tenderly/Anvil-fork
     simulation uses under the hood; `eth_call` is the free, dependency-free
-    version of it and is sufficient for a hackathon MVP (see architecture
-    doc risk #3 — Tenderly is a nice-to-have upgrade from here, not
-    a requirement).
+    version of it and is sufficient on its own — Tenderly is a nice-to-have
+    upgrade from here, not a requirement.
 """
 import random
 

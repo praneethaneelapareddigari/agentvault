@@ -4,7 +4,7 @@ Agent pipeline router.
 POST /api/agent/request runs the pipeline synchronously through:
   intent -> plan -> risk -> policy -> simulate -> awaiting_approval
 
-For a hackathon demo this is simpler and more reliable than a background
+This synchronous approach is simpler and more reliable than a background
 job queue, and the "step status" list returned lets the frontend render the
 same "Analyzing wallet / Searching protocols / ..." UI the product spec
 calls for, without needing websockets.

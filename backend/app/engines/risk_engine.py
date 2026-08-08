@@ -1,9 +1,9 @@
 """
 Risk Engine
 -----------
-Deterministic, non-LLM risk scoring. Intentionally simple and explainable
-for the hackathon MVP: a general contract-risk static analyzer is out of
-scope for 4 days, so risk is derived from:
+Deterministic, non-LLM risk scoring. Intentionally simple and explainable:
+a general contract-risk static analyzer is out of scope for this build,
+so risk is derived from:
 
   1. A vetted protocol allowlist with pre-assigned base risk scores
      (audits/TVL/track record considered offline, not computed live).

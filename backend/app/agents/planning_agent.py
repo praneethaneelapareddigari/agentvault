@@ -7,7 +7,7 @@ opportunities, produces a single structured execution plan (not free text).
 Tool-calling note: in a full LLM-orchestrated version, this agent would call
 `get_wallet_balances`, `get_protocol_opportunities`, and `get_gas_estimate`
 as read-only tools and let the model choose among pre-fetched, allowlisted
-options. For hackathon reliability we implement the selection logic
+options. For reliability we implement the selection logic
 deterministically (best APY meeting the risk floor within budget) — this is
 equivalent in behavior to a well-prompted tool-calling agent, without LLM
 latency/non-determinism on the critical path. The LLM can still be layered
