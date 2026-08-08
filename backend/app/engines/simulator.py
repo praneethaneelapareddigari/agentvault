@@ -3,19 +3,75 @@ Transaction Simulator
 ----------------------
 Simulates the proposed transaction BEFORE anything touches the smart wallet.
 
-Hackathon fallback strategy (see build plan risk #3): a real deployment would
-call Tenderly's simulation API or run against a local Anvil fork via
-`eth_call`. Both require live RPC/API access this sandboxed environment
-doesn't have, so this module implements the same interface with a
-deterministic mock — swap `simulate` internals for a real fork/Tenderly call
-without touching any caller.
+Two modes, selected by EXECUTION_MODE:
+  - "mock" (default): deterministic pseudo-random result, zero setup.
+  - "real": an actual `eth_call` against Base Sepolia — asks the chain
+    "would this Aave supply() call revert?" without spending any gas or
+    changing any state. This is the same technique Tenderly/Anvil-fork
+    simulation uses under the hood; `eth_call` is the free, dependency-free
+    version of it and is sufficient for a hackathon MVP (see architecture
+    doc risk #3 — Tenderly is a nice-to-have upgrade from here, not
+    a requirement).
 """
 import random
 
+from app.config import settings
+from app.services.chain import get_web3
+
+
+def simulate_onchain(*, user_address: str, amount_usd: float) -> dict | None:
+    """Real eth_call simulation of the Aave supply() the plan would trigger.
+    Returns None (not an exception) if real-chain access isn't configured
+    or the RPC call itself fails for infra reasons — distinct from the call
+    succeeding and reporting the transaction WOULD revert, which is a
+    legitimate simulation result, not a fallback trigger."""
+    w3 = get_web3()
+    if not w3 or not settings.USDC_ADDRESS or not settings.POLICY_VAULT_ADDRESS:
+        return None
+    try:
+        from app.services.aave import encode_supply_calldata
+
+        amount_wei = int(amount_usd * 1_000_000)  # USDC has 6 decimals
+        calldata = encode_supply_calldata(w3, settings.USDC_ADDRESS, amount_wei, user_address)
+
+        w3.eth.call(
+            {
+                "from": w3.to_checksum_address(settings.POLICY_VAULT_ADDRESS),
+                "to": w3.to_checksum_address(settings.AAVE_POOL_ADDRESS),
+                "data": calldata,
+            }
+        )
+        return {
+            "success": True,
+            "estimated_gas_usd": None,
+            "expected_asset_changes": {"-USDC": amount_usd, "+aBasUSDC": amount_usd},
+            "warnings": [],
+            "failure_reason": None,
+        }
+    except Exception as e:
+        msg = str(e)
+        if "insufficient" in msg.lower() or "revert" in msg.lower():
+            # A real revert is a legitimate simulation result, not an error.
+            return {
+                "success": False,
+                "estimated_gas_usd": None,
+                "expected_asset_changes": {},
+                "warnings": [],
+                "failure_reason": msg[:200],
+            }
+        return None  # infra failure (bad RPC, timeout, etc.) — fall back to mock
+
 
 def simulate(
-    *, protocol: str, chain: str, asset: str, amount_usd: float, estimated_gas_usd: float
+    *, protocol: str, chain: str, asset: str, amount_usd: float, estimated_gas_usd: float,
+    user_address: str | None = None,
 ) -> dict:
+    if settings.EXECUTION_MODE == "real" and user_address:
+        onchain_result = simulate_onchain(user_address=user_address, amount_usd=amount_usd)
+        if onchain_result:
+            onchain_result["estimated_gas_usd"] = estimated_gas_usd
+            return onchain_result
+        # falls through to mock below if real simulation was unavailable
     # Deterministic-ish "randomness" seeded by inputs so repeated calls with
     # the same plan give consistent demo results.
     rng = random.Random(f"{protocol}-{chain}-{asset}-{amount_usd}")

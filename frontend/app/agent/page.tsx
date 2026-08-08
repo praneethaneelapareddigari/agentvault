@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, StepStatus } from "@/lib/api";
+import { useWallet } from "@/components/WalletProvider";
+import DepositPanel from "@/components/DepositPanel";
 
 const EXAMPLE =
   "I have $1,000 USDC. Find a low-risk yield opportunity and invest $500, but don't spend more than $5 on gas and never put more than $500 into one protocol.";
@@ -20,6 +22,7 @@ export default function AgentPage() {
   const [steps, setSteps] = useState<StepStatus[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { address, isReal } = useWallet();
 
   async function submit() {
     setLoading(true);
@@ -39,7 +42,7 @@ export default function AgentPage() {
         { label: "Simulating transaction", status: "pending" },
       ]);
 
-      const req = await api.createAgentRequest(prompt);
+      const req = await api.createAgentRequest(prompt, address ?? undefined);
       setSteps(req.steps ?? null);
 
       if (req.status === "awaiting_approval") {
@@ -65,6 +68,16 @@ export default function AgentPage() {
           anything on its own.
         </p>
       </div>
+
+      {isReal ? (
+        <DepositPanel walletAddress={address!} />
+      ) : (
+        <div className="card p-4 text-xs text-muted">
+          Using the demo wallet. Connect a real wallet (top right) to submit
+          requests against your own address — deposits and execution follow
+          whatever <code>EXECUTION_MODE</code> the backend is running.
+        </div>
+      )}
 
       <div className="card p-5 space-y-4">
         <textarea

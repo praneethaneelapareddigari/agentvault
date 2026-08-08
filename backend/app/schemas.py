@@ -21,7 +21,8 @@ class Intent(BaseModel):
 
 class AgentRequestCreate(BaseModel):
     prompt: str
-    user_id: Optional[str] = None  # defaults to demo user if omitted
+    wallet_address: Optional[str] = None  # real connected wallet, if any
+    user_id: Optional[str] = None  # defaults to demo/wallet user if omitted
 
 
 class PolicyUpdate(BaseModel):
@@ -77,6 +78,7 @@ class TransactionOut(BaseModel):
     chain: str
     status: str
     block_number: Optional[int]
+    explorer_url: Optional[str] = None
 
     class Config:
         from_attributes = True

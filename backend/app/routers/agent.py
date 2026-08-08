@@ -20,7 +20,8 @@ from app.agents.planning_agent import build_plan, NoViableOpportunityError
 from app.agents.verification_agent import verify_execution
 from app.engines.policy_engine import evaluate_plan
 from app.engines.simulator import simulate
-from app.smart_wallet.mock_wallet import execute as wallet_execute
+from app.smart_wallet.mock_wallet import execute as mock_execute
+from app.smart_wallet import real_wallet
 
 router = APIRouter(prefix="/api/agent", tags=["agent"])
 
@@ -35,10 +36,14 @@ STEP_LABELS = [
 ]
 
 
-def _get_or_create_demo_user(db: Session) -> models.User:
-    user = db.query(models.User).filter_by(wallet_address=settings.DEMO_WALLET_ADDRESS).first()
+def _get_or_create_user(db: Session, wallet_address: str) -> models.User:
+    """Looks up (or creates, with default policy) a user by wallet address.
+    Used for both the demo wallet and any real connected wallet — the two
+    paths are otherwise identical, which is the point: EXECUTION_MODE
+    changes what happens on approval, not the shape of the pipeline."""
+    user = db.query(models.User).filter_by(wallet_address=wallet_address).first()
     if not user:
-        user = models.User(wallet_address=settings.DEMO_WALLET_ADDRESS)
+        user = models.User(wallet_address=wallet_address)
         db.add(user)
         db.commit()
         db.refresh(user)
@@ -59,11 +64,11 @@ def _get_or_create_demo_user(db: Session) -> models.User:
 
 @router.post("/request", response_model=schemas.AgentRequestOut)
 def create_agent_request(body: schemas.AgentRequestCreate, db: Session = Depends(get_db)):
-    user = (
-        db.query(models.User).filter_by(id=body.user_id).first()
-        if body.user_id
-        else _get_or_create_demo_user(db)
-    )
+    if body.user_id:
+        user = db.query(models.User).filter_by(id=body.user_id).first()
+    else:
+        wallet_address = body.wallet_address or settings.DEMO_WALLET_ADDRESS
+        user = _get_or_create_user(db, wallet_address)
     if not user:
         raise HTTPException(404, "User not found")
 
@@ -121,6 +126,7 @@ def create_agent_request(body: schemas.AgentRequestCreate, db: Session = Depends
             asset=plan_data["asset"],
             amount_usd=plan_data["amount_usd"],
             estimated_gas_usd=plan_data["estimated_gas_usd"],
+            user_address=user.wallet_address,
         )
         mark(6, "done" if sim_result["success"] else "failed")
 
@@ -185,7 +191,17 @@ def approve(request_id: str, db: Session = Depends(get_db)):
             "Cannot approve: plan did not pass policy validation and/or simulation.",
         )
 
-    tx_result = wallet_execute(plan)
+    user = db.query(models.User).filter_by(id=req.user_id).first()
+
+    if real_wallet.is_configured():
+        try:
+            tx_result = real_wallet.execute(plan, user.wallet_address)
+        except real_wallet.RealExecutionUnavailable as e:
+            raise HTTPException(503, f"Real execution unavailable: {e}")
+        except Exception as e:
+            raise HTTPException(500, f"On-chain execution failed: {e}")
+    else:
+        tx_result = mock_execute(plan)
 
     tx = models.Transaction(
         plan_id=plan.id,
@@ -193,6 +209,7 @@ def approve(request_id: str, db: Session = Depends(get_db)):
         chain=plan.chain,
         status=tx_result["status"],
         block_number=tx_result["block_number"],
+        explorer_url=tx_result.get("explorer_url"),
     )
     db.add(tx)
 

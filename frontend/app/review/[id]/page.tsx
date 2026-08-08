@@ -12,6 +12,7 @@ export default function ReviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [explorerUrl, setExplorerUrl] = useState<string | null>(null);
 
   useEffect(() => {
     api.getPlan(id).then(setPlan).catch((e) => setError(String(e)));
@@ -21,7 +22,13 @@ export default function ReviewPage() {
     setBusy(true);
     try {
       const tx = await api.approve(id);
-      setResult(`Executed. Tx ${tx.tx_hash.slice(0, 14)}... on ${tx.chain} — status: ${tx.status}.`);
+      const shortHash = `${tx.tx_hash.slice(0, 14)}...`;
+      setResult(
+        tx.explorer_url
+          ? `Executed on-chain. Tx ${shortHash} on ${tx.chain} — status: ${tx.status}.`
+          : `Executed. Tx ${shortHash} on ${tx.chain} — status: ${tx.status}.`
+      );
+      setExplorerUrl(tx.explorer_url ?? null);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -100,7 +107,19 @@ export default function ReviewPage() {
       )}
 
       {result ? (
-        <div className="card p-4 text-accent2 text-sm">{result}</div>
+        <div className="card p-4 space-y-2">
+          <p className="text-accent2 text-sm">{result}</p>
+          {explorerUrl && (
+            <a
+              href={explorerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-xs font-medium px-3 py-1.5 rounded-lg bg-panel border border-accent2 text-accent2 hover:opacity-80 transition"
+            >
+              View on BaseScan ↗
+            </a>
+          )}
+        </div>
       ) : (
         <div className="flex gap-3">
           <button

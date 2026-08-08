@@ -42,6 +42,7 @@ def _send_tx(plan) -> dict:
         "tx_hash": tx_hash,
         "status": "confirmed",
         "block_number": 10_000_000 + int(time.time()) % 100000,
+        "explorer_url": None,  # mock execution never touches a real chain
     }
 
 

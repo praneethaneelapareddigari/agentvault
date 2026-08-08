@@ -2,19 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api, WalletBalances, ActivityItem, DEMO_WALLET } from "@/lib/api";
+import { api, WalletBalances, DEMO_WALLET } from "@/lib/api";
+import { useWallet } from "@/components/WalletProvider";
 
 export default function Dashboard() {
+  const { address, effectiveAddress, isReal } = useWallet();
   const [wallet, setWallet] = useState<WalletBalances | null>(null);
-  const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.getBalances(DEMO_WALLET).then(setWallet).catch((e) => setError(String(e)));
-    // user_id lookup is simplified for demo: activity endpoint keyed by
-    // user id, but since this is a single-demo-wallet build we let the
-    // agent page create the user record; on first load this may be empty.
-  }, []);
+    api.getBalances(effectiveAddress).then(setWallet).catch((e) => setError(String(e)));
+  }, [effectiveAddress]);
 
   const chains = wallet ? Object.keys(wallet.balances) : [];
 
@@ -26,6 +24,14 @@ export default function Dashboard() {
           Permissioned AI execution: AI proposes, policy validates, you approve.
         </p>
       </div>
+
+      {isReal && (
+        <div className="card p-3 text-xs text-accent2 border-accent2">
+          Connected wallet — balances below are read live from Base Sepolia
+          when EXECUTION_MODE=real is configured on the backend, otherwise
+          the demo mock wallet is shown.
+        </div>
+      )}
 
       {error && (
         <div className="card p-4 text-danger text-sm">
@@ -42,7 +48,10 @@ export default function Dashboard() {
           <p className="text-3xl font-semibold">
             {wallet ? `$${wallet.total_usd.toLocaleString()}` : "—"}
           </p>
-          <p className="text-xs text-muted mt-2">{DEMO_WALLET}</p>
+          <p className="text-xs text-muted mt-2">
+            {address ?? DEMO_WALLET}
+            {!address && " (demo wallet)"}
+          </p>
         </div>
 
         <div className="card p-5 md:col-span-2">

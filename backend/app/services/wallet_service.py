@@ -3,13 +3,14 @@ Wallet Service (Data Layer)
 ----------------------------
 Read-only wallet balance access across supported chains.
 
-In this hackathon build, live RPC calls are stubbed with a realistic mock
-so the pipeline is fully runnable without external RPC/API dependencies.
-Swap `get_balances` for a real `viem`/`web3.py` call per chain when wiring
-up live testnet/mainnet reads — the interface stays the same.
+Two modes, selected by EXECUTION_MODE:
+  - "mock" (default): realistic hardcoded balances, zero setup required.
+  - "real": live Base Sepolia RPC reads (native ETH + USDC ERC20 balance)
+    via web3.py, with automatic fallback to mock if the RPC call fails for
+    any reason — a flaky RPC should never break the demo.
 """
 from app.config import settings
-
+from app.services.chain import get_web3
 
 MOCK_BALANCES = {
     settings.DEMO_WALLET_ADDRESS: {
@@ -19,11 +20,49 @@ MOCK_BALANCES = {
     }
 }
 
+_ERC20_BALANCE_ABI = [
+    {
+        "constant": True,
+        "inputs": [{"name": "_owner", "type": "address"}],
+        "name": "balanceOf",
+        "outputs": [{"name": "balance", "type": "uint256"}],
+        "type": "function",
+    }
+]
+
+
+def get_balances_onchain(address: str) -> dict | None:
+    """Real Base Sepolia balance read. Returns None (not an exception) on
+    any failure so callers can cleanly fall back to mock data."""
+    w3 = get_web3()
+    if not w3:
+        return None
+    try:
+        checksum = w3.to_checksum_address(address)
+        eth_balance = w3.eth.get_balance(checksum) / 1e18
+        result = {"base": {"ETH": round(eth_balance, 6)}}
+
+        if settings.USDC_ADDRESS:
+            usdc = w3.eth.contract(
+                address=w3.to_checksum_address(settings.USDC_ADDRESS), abi=_ERC20_BALANCE_ABI
+            )
+            raw = usdc.functions.balanceOf(checksum).call()
+            result["base"]["USDC"] = round(raw / 1e6, 2)  # USDC has 6 decimals
+
+        return result
+    except Exception:
+        return None
+
 
 def get_balances(address: str) -> dict:
-    """Returns balances per chain per asset. Falls back to a demo wallet
-    if the address isn't recognized, so the UI is never empty during a demo.
-    """
+    """Returns balances per chain per asset. In real mode, tries a live
+    Base Sepolia RPC read first; falls back to the demo mock wallet if
+    real reads aren't configured, fail, or the address is unrecognized —
+    so the UI is never empty during a demo."""
+    if settings.EXECUTION_MODE == "real":
+        onchain = get_balances_onchain(address)
+        if onchain:
+            return onchain
     return MOCK_BALANCES.get(address, MOCK_BALANCES[settings.DEMO_WALLET_ADDRESS])
 
 

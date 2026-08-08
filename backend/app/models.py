@@ -90,6 +90,9 @@ class Transaction(Base):
     chain = Column(String, nullable=False)
     status = Column(String, nullable=False, default="pending")  # pending/confirmed/failed
     block_number = Column(Integer, nullable=True)
+    # Populated only for real on-chain execution (EXECUTION_MODE=real);
+    # None for mock-mode transactions, which never touch a real explorer.
+    explorer_url = Column(String, nullable=True)
     executed_at = Column(DateTime, default=datetime.utcnow)
 
 

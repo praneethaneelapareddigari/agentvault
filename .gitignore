@@ -21,3 +21,4 @@ contracts/typechain-types/
 
 # OS
 .DS_Store
+*.tsbuildinfo

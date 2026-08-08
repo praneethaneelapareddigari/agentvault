@@ -52,6 +52,7 @@ export interface TransactionResult {
   chain: string;
   status: string;
   block_number: number;
+  explorer_url?: string | null;
 }
 
 export interface WalletBalances {
@@ -70,10 +71,10 @@ export interface ActivityItem {
 export const DEMO_WALLET = "0xDEMO0000000000000000000000000000000001";
 
 export const api = {
-  createAgentRequest: (prompt: string) =>
+  createAgentRequest: (prompt: string, walletAddress?: string) =>
     request<AgentRequest>("/api/agent/request", {
       method: "POST",
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ prompt, wallet_address: walletAddress }),
     }),
   getAgentRequest: (id: string) => request<AgentRequest>(`/api/agent/request/${id}`),
   getPlan: (id: string) => request<ExecutionPlan>(`/api/agent/request/${id}/plan`),
